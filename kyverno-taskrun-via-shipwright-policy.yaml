@@ -1,0 +1,20 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: task-run-inherit-build-strategy-annotation-policy
+spec:
+  validationFailureAction: enforce
+  rules:
+    - name: "task-run-inherit-build-strategy-annotation-rule"      
+      match:
+        resources:
+          annotations:
+              foo.io: "bar"            
+          kinds:
+          - tekton.dev/v1beta1/TaskRun
+          name: "buildpack-nodejs-buildrun-*"
+      validate:
+        message: "Only serviceaccount builder can use annotation foo.io from a TaskRun"
+        pattern:
+          spec:
+            serviceAccountName: builder
