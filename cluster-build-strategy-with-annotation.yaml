@@ -1,0 +1,60 @@
+apiVersion: shipwright.io/v1alpha1
+kind: ClusterBuildStrategy
+metadata:
+  annotations:
+    foo.io: bar
+  name: buildpacks-v3
+spec:
+  buildSteps:
+    - name: prepare
+      image: docker.io/paketobuildpacks/builder:full
+      securityContext:
+        runAsUser: 0
+        capabilities:
+          add: 
+            - CHOWN
+      command:
+        - /bin/bash
+      args:
+        - -c
+        - >
+          chown -R "1000:1000" /workspace/source &&
+          chown -R "1000:1000" /tekton/home &&
+          chown -R "1000:1000" /cache &&
+          chown -R "1000:1000" /layers
+      resources:
+        limits:
+          cpu: 500m
+          memory: 1Gi
+        requests:
+          cpu: 250m
+          memory: 65Mi
+      volumeMounts:
+        - name: cache-dir
+          mountPath: /cache
+        - name: layers-dir
+          mountPath: /layers
+    - name: build-and-push
+      image: docker.io/paketobuildpacks/builder:full
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+      command:
+        - /cnb/lifecycle/creator
+      args:
+        - -app=/workspace/source/$(build.source.contextDir)
+        - -cache-dir=/cache
+        - -layers=/layers
+        - $(build.output.image)
+      resources:
+        limits:
+          cpu: 500m
+          memory: 1Gi
+        requests:
+          cpu: 250m
+          memory: 65Mi
+      volumeMounts:
+        - name: cache-dir
+          mountPath: /cache
+        - name: layers-dir
+          mountPath: /layers
